@@ -21,7 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * @author yutianbao
  */
 public class DefaultUidGeneratorTest {
-    private static final int SIZE = 100000; // 10w
+    private static final int SIZE = 7000000; // 700w
     private static final boolean VERBOSE = true;
     private static final int THREADS = Runtime.getRuntime().availableProcessors() << 1;
 
@@ -101,7 +101,7 @@ public class DefaultUidGeneratorTest {
         assertTrue(StringUtils.isNotBlank(parsedInfo));
 
         if (VERBOSE) {
-//            System.out.println(Thread.currentThread().getName() + " No." + index + " >>> " + parsedInfo);
+            System.out.println(Thread.currentThread().getName() + " No." + index + " >>> " + parsedInfo);
         }
     }
 
@@ -109,7 +109,6 @@ public class DefaultUidGeneratorTest {
      * Check UIDs are all unique
      */
     private void checkUniqueID(Set<Long> uidSet) {
-        System.out.println(uidSet.size());
         assertEquals(SIZE, uidSet.size());
     }
 
