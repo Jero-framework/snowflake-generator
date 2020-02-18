@@ -1,12 +1,8 @@
 package com.jero.snowflake;
 
+import com.jero.common.utils.StringUtils;
 import com.jero.snowflake.impl.DefaultUidGenerator;
-import org.apache.commons.lang.StringUtils;
-import org.junit.Assert;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.springframework.test.context.ContextConfiguration;
-import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
+import org.junit.jupiter.api.Test;
 
 import javax.annotation.Resource;
 import java.util.ArrayList;
@@ -16,20 +12,20 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 /**
  * Test for {@link DefaultUidGenerator}
  * 
  * @author yutianbao
  */
-@RunWith(SpringJUnit4ClassRunner.class)
-@ContextConfiguration(locations = { "classpath:uid/default-uid-spring.xml" })
 public class DefaultUidGeneratorTest {
     private static final int SIZE = 100000; // 10w
     private static final boolean VERBOSE = true;
     private static final int THREADS = Runtime.getRuntime().availableProcessors() << 1;
 
-    @Resource
-    private UidGenerator uidGenerator;
+    private UidGenerator uidGenerator = DefaultUidGenerator.getUidGenerator();
 
     /**
      * Test for serially generate
@@ -72,7 +68,7 @@ public class DefaultUidGeneratorTest {
         }
 
         // Check generate 10w times
-        Assert.assertEquals(SIZE, control.get());
+        assertEquals(SIZE, control.get());
 
         // Check UIDs are all unique
         checkUniqueID(uidSet);
@@ -101,11 +97,11 @@ public class DefaultUidGeneratorTest {
         uidSet.add(uid);
 
         // Check UID is positive, and can be parsed
-        Assert.assertTrue(uid > 0L);
-        Assert.assertTrue(StringUtils.isNotBlank(parsedInfo));
+        assertTrue(uid > 0L);
+        assertTrue(StringUtils.isNotBlank(parsedInfo));
 
         if (VERBOSE) {
-            System.out.println(Thread.currentThread().getName() + " No." + index + " >>> " + parsedInfo);
+//            System.out.println(Thread.currentThread().getName() + " No." + index + " >>> " + parsedInfo);
         }
     }
 
@@ -114,7 +110,7 @@ public class DefaultUidGeneratorTest {
      */
     private void checkUniqueID(Set<Long> uidSet) {
         System.out.println(uidSet.size());
-        Assert.assertEquals(SIZE, uidSet.size());
+        assertEquals(SIZE, uidSet.size());
     }
 
 }

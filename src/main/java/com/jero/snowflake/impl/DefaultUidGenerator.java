@@ -15,17 +15,24 @@
  */
 package com.jero.snowflake.impl;
 
+import com.jero.common.utils.ConvertUtils;
+import com.jero.common.utils.StringUtils;
 import com.jero.snowflake.BitsAllocator;
 import com.jero.snowflake.UidGenerator;
+import com.jero.snowflake.buffer.BufferPaddingExecutor;
+import com.jero.snowflake.buffer.RejectedPutBufferHandler;
+import com.jero.snowflake.buffer.RejectedTakeBufferHandler;
+import com.jero.snowflake.buffer.RingBuffer;
 import com.jero.snowflake.exception.UidGenerateException;
-import com.jero.snowflake.utils.DateUtils;
+import com.jero.snowflake.worker.DefaultWorkerIdAssigner;
 import com.jero.snowflake.worker.WorkerIdAssigner;
-import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.InitializingBean;
 
+import java.text.ParseException;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -44,60 +51,78 @@ import java.util.concurrent.TimeUnit;
  * +------+----------------------+----------------+-----------+
  * | sign |     delta seconds    | worker node id | sequence  |
  * +------+----------------------+----------------+-----------+
- *   1bit          28bits              22bits         13bits
+ *   1bit          34bits              16bits         13bits
  * }</pre>
  *
  * You can also specified the bits by Spring property setting.
- * <li>timeBits: default as 28
- * <li>workerBits: default as 22
+ * <li>timeBits: default as 34
+ * <li>workerBits: default as 16
  * <li>seqBits: default as 13
- * <li>epochStr: Epoch date string format 'yyyy-MM-dd'. Default as '2016-05-20'<p>
+ * <li>epochStr: Epoch date string format 'yyyy-MM-dd'. Default as '2020-02-17'<p>
  *
  * <b>Note that:</b> The total bits must be 64 -1
  *
  * @author yutianbao
  */
-public class DefaultUidGenerator implements UidGenerator, InitializingBean {
+public class DefaultUidGenerator implements UidGenerator {
     private static final Logger LOGGER = LoggerFactory.getLogger(DefaultUidGenerator.class);
 
     /** Bits allocate */
-    protected int timeBits = 28;
-    protected int workerBits = 22;
+    protected int timeBits = 34;
+    protected int workerBits = 16;
     protected int seqBits = 13;
 
-    /** Customer epoch, unit as second. For example 2016-05-20 (ms: 1463673600000)*/
-    protected String epochStr = "2016-05-20";
-    protected long epochSeconds = TimeUnit.MILLISECONDS.toSeconds(1463673600000L);
+    /** Customer epoch, unit as second. For example 2020-02-17 (ms: 1463673600000)*/
+    protected String epochStr = "2020-02-17";  //初始时间
+    protected long epochSeconds = TimeUnit.MILLISECONDS.toSeconds(1581868800000L);
 
-    /** Stable fields after spring bean initializing */
+    /** 算法类，实现了算法 */
     protected BitsAllocator bitsAllocator;
-    protected long workerId;
+    protected Long workerId;
 
-    /** Volatile fields caused by nextId() */
-    protected long sequence = 0L;
-    protected long lastSecond = -1L;
+    private static final int DEFAULT_BOOST_POWER = 3;
 
-    /** Spring property */
+    /** Spring properties */
+    private int boostPower = DEFAULT_BOOST_POWER;
+    private int paddingFactor = RingBuffer.DEFAULT_PADDING_PERCENT;
+
+    private RejectedPutBufferHandler rejectedPutBufferHandler;
+    private RejectedTakeBufferHandler rejectedTakeBufferHandler;
+
+    /** RingBuffer */
+    private RingBuffer ringBuffer;
+    private BufferPaddingExecutor bufferPaddingExecutor;
+
     protected WorkerIdAssigner workerIdAssigner;
 
-    @Override
-    public void afterPropertiesSet() throws Exception {
-        // initialize bits allocator
-        bitsAllocator = new BitsAllocator(timeBits, workerBits, seqBits);
+    private volatile static UidGenerator defaultUidGenerator;
 
-        // initialize worker id
-        workerId = workerIdAssigner.assignWorkerId();
-        if (workerId > bitsAllocator.getMaxWorkerId()) {
-            throw new RuntimeException("Worker id " + workerId + " exceeds the max " + bitsAllocator.getMaxWorkerId());
-        }
-
-        LOGGER.info("Initialized bits(1, {}, {}, {}) for workerID:{}", timeBits, workerBits, seqBits, workerId);
+    private DefaultUidGenerator (){
+        initAlgorithmAndWorkerId();
+        initRingBuffer();
     }
 
+    public static UidGenerator getUidGenerator() {
+        if (defaultUidGenerator == null) {
+            synchronized (DefaultUidGenerator.class) {
+                if (defaultUidGenerator == null) {
+                    defaultUidGenerator = new DefaultUidGenerator();
+                }
+            }
+        }
+        return defaultUidGenerator;
+    }
+
+    /**
+     * 获取缓存中ID
+     * 首次调用时，判断是否初始化，若未初始化，则进行算法的初始化操作
+     * @return long 生成的Id
+     * @throws UidGenerateException
+     */
     @Override
     public long getUID() throws UidGenerateException {
         try {
-            return nextId();
+            return ringBuffer.take();
         } catch (Exception e) {
             LOGGER.error("Generate unique id exception. ", e);
             throw new UidGenerateException(e);
@@ -118,7 +143,7 @@ public class DefaultUidGenerator implements UidGenerator, InitializingBean {
         long deltaSeconds = uid >>> (workerIdBits + sequenceBits);
 
         Date thatTime = new Date(TimeUnit.SECONDS.toMillis(epochSeconds + deltaSeconds));
-        String thatTimeStr = DateUtils.formatByDateTimePattern(thatTime);
+        String thatTimeStr = ConvertUtils.formatStrFromTime(thatTime);
 
         // format as string
         return String.format("{\"UID\":\"%d\",\"timestamp\":\"%s\",\"workerId\":\"%d\",\"sequence\":\"%d\"}",
@@ -126,92 +151,87 @@ public class DefaultUidGenerator implements UidGenerator, InitializingBean {
     }
 
     /**
-     * Get UID
+     * Get the UIDs in the same specified second under the max sequence
      *
-     * @return UID
-     * @throws UidGenerateException in the case: Clock moved backwards; Exceeds the max timestamp
+     * @param currentSecond
+     * @return UID list, size of {@link BitsAllocator#getMaxSequence()} + 1
      */
-    protected synchronized long nextId() {
-        long currentSecond = getCurrentSecond();
+    protected List<Long> nextIdsForOneSecond(long currentSecond) {
+        // Initialize result list size of (max sequence + 1)
+        int listSize = (int) bitsAllocator.getMaxSequence() + 1;
+        List<Long> uidList = new ArrayList<>(listSize);
 
-        // Clock moved backwards, refuse to generate uid
-        if (currentSecond < lastSecond) {
-            long refusedSeconds = lastSecond - currentSecond;
-            throw new UidGenerateException("Clock moved backwards. Refusing for %d seconds", refusedSeconds);
+        // Allocate the first sequence of the second, the others can be calculated with the offset
+        long firstSeqUid = bitsAllocator.allocate(currentSecond - epochSeconds, workerId, 0L);
+        for (int offset = 0; offset < listSize; offset++) {
+            uidList.add(firstSeqUid + offset);
         }
 
-        // At the same second, increase sequence
-        if (currentSecond == lastSecond) {
-            sequence = (sequence + 1) & bitsAllocator.getMaxSequence();
-            // Exceed the max sequence, we wait the next second to generate uid
-            if (sequence == 0) {
-                currentSecond = getNextSecond(lastSecond);
-            }
-
-        // At the different second, sequence restart from zero
-        } else {
-            sequence = 0L;
-        }
-
-        lastSecond = currentSecond;
-
-        // Allocate bits for UID
-        return bitsAllocator.allocate(currentSecond - epochSeconds, workerId, sequence);
+        return uidList;
     }
 
     /**
-     * Get next millisecond
+     * Initialize RingBuffer & RingBufferPaddingExecutor
      */
-    private long getNextSecond(long lastTimestamp) {
-        long timestamp = getCurrentSecond();
-        while (timestamp <= lastTimestamp) {
-            timestamp = getCurrentSecond();
+    private void initRingBuffer() {
+        // initialize RingBuffer
+        int bufferSize = ((int) bitsAllocator.getMaxSequence() + 1) << boostPower;
+        this.ringBuffer = new RingBuffer(bufferSize, paddingFactor);
+        LOGGER.info("Initialized ring buffer size:{}, paddingFactor:{}", bufferSize, paddingFactor);
+
+        // initialize RingBufferPaddingExecutor
+        this.bufferPaddingExecutor = new BufferPaddingExecutor(ringBuffer, this::nextIdsForOneSecond);
+
+        // set rejected put/take handle policy
+        this.ringBuffer.setBufferPaddingExecutor(bufferPaddingExecutor);
+        if (rejectedPutBufferHandler != null) {
+            this.ringBuffer.setRejectedPutHandler(rejectedPutBufferHandler);
+        }
+        if (rejectedTakeBufferHandler != null) {
+            this.ringBuffer.setRejectedTakeHandler(rejectedTakeBufferHandler);
         }
 
-        return timestamp;
+        // fill in all slots of the RingBuffer
+        bufferPaddingExecutor.paddingBuffer();
+        LOGGER.info("Initialized ringBuffer {}", ringBuffer.toString());
     }
 
-    /**
-     * Get current second
-     */
-    private long getCurrentSecond() {
-        long currentSecond = TimeUnit.MILLISECONDS.toSeconds(System.currentTimeMillis());
-        if (currentSecond - epochSeconds > bitsAllocator.getMaxDeltaSeconds()) {
-            throw new UidGenerateException("Timestamp bits is exhausted. Refusing UID generate. Now: " + currentSecond);
+    private void initAlgorithmAndWorkerId(){
+        // initialize bits allocator
+        bitsAllocator = new BitsAllocator(timeBits, workerBits, seqBits);
+
+        // initialize worker id
+        workerIdAssigner = new DefaultWorkerIdAssigner();
+        workerId = workerIdAssigner.assignWorkerId();
+        if (workerId > bitsAllocator.getMaxWorkerId()) {
+            throw new RuntimeException("Worker id " + workerId + " exceeds the max " + bitsAllocator.getMaxWorkerId());
         }
 
-        return currentSecond;
+        LOGGER.info("Initialized bits(1, {}, {}, {}) for workerID:{}", timeBits, workerBits, seqBits, workerId);
     }
 
-    /**
-     * Setters for spring property
-     */
-    public void setWorkerIdAssigner(WorkerIdAssigner workerIdAssigner) {
-        this.workerIdAssigner = workerIdAssigner;
-    }
-
-    public void setTimeBits(int timeBits) {
-        if (timeBits > 0) {
-            this.timeBits = timeBits;
-        }
-    }
-
-    public void setWorkerBits(int workerBits) {
-        if (workerBits > 0) {
-            this.workerBits = workerBits;
-        }
-    }
-
-    public void setSeqBits(int seqBits) {
-        if (seqBits > 0) {
-            this.seqBits = seqBits;
-        }
-    }
-
+    //保留 TODO
     public void setEpochStr(String epochStr) {
         if (StringUtils.isNotBlank(epochStr)) {
             this.epochStr = epochStr;
-            this.epochSeconds = TimeUnit.MILLISECONDS.toSeconds(DateUtils.parseByDayPattern(epochStr).getTime());
+            String DAY_PATTERN = "yyyy-MM-dd";
+            try {
+                this.epochSeconds = TimeUnit.MILLISECONDS.toSeconds(ConvertUtils.strToDate(epochStr, DAY_PATTERN).getTime());
+            } catch (ParseException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    public static void main(String[] args) {
+        UidGenerator uidGenerator = DefaultUidGenerator.getUidGenerator();
+        for (int i = 0; i < 5; i++) {
+            System.out.println(uidGenerator.getUID());
+        }
+        System.out.println(111);
+        UidGenerator uidGenerator2 = DefaultUidGenerator.getUidGenerator();
+        for (int i = 0; i < 5; i++) {
+            System.out.println(uidGenerator2.getUID());
         }
     }
 }

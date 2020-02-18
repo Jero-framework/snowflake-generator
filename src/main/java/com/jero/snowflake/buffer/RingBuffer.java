@@ -16,8 +16,12 @@
 package com.jero.snowflake.buffer;
 
 import com.jero.snowflake.utils.PaddedAtomicLong;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.atomic.AtomicLong;
+
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Represents a ring buffer based on array.<br>
@@ -33,7 +37,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * @author yutianbao
  */
 public class RingBuffer {
-//    private static final Logger LOGGER = LoggerFactory.getLogger(RingBuffer.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(RingBuffer.class);
 
     /** Constants */
     private static final int START_POINT = -1;
@@ -83,8 +87,8 @@ public class RingBuffer {
     public RingBuffer(int bufferSize, int paddingFactor){
         // check buffer size is positive & a power of 2; padding factor in (0, 100)
         assertTrue(bufferSize > 0L, "RingBuffer size must be positive");
-        Assert.isTrue(Integer.bitCount(bufferSize) == 1, "RingBuffer size must be a power of 2");
-        Assert.isTrue(paddingFactor > 0 && paddingFactor < 100, "RingBuffer size must be positive");
+        assertTrue(Integer.bitCount(bufferSize) == 1, "RingBuffer size must be a power of 2");
+        assertTrue(paddingFactor > 0 && paddingFactor < 100, "RingBuffer size must be positive");
 
         this.bufferSize = bufferSize;
         this.indexMask = bufferSize - 1;
@@ -150,7 +154,7 @@ public class RingBuffer {
         long nextCursor = cursor.updateAndGet(old -> old == tail.get() ? old : old + 1);
 
         // check for safety consideration, it never occurs
-        Assert.isTrue(nextCursor >= currentCursor, "Curosr can't move back");
+        assertTrue(nextCursor >= currentCursor, "Curosr can't move back");
 
         // trigger padding in an async-mode if reach the threshold
         long currentTail = tail.get();
@@ -167,7 +171,7 @@ public class RingBuffer {
 
         // 1. check next slot flag is CAN_TAKE_FLAG
         int nextCursorIndex = calSlotIndex(nextCursor);
-        Assert.isTrue(flags[nextCursorIndex].get() == CAN_TAKE_FLAG, "Curosr not in can take status");
+        assertTrue(flags[nextCursorIndex].get() == CAN_TAKE_FLAG, "Curosr not in can take status");
 
         // 2. get UID from next slot
         // 3. set next slot flag as CAN_PUT_FLAG.
