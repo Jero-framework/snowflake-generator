@@ -68,11 +68,11 @@ public class DefaultUidGenerator implements UidGenerator {
     private static final Logger LOGGER = LoggerFactory.getLogger(DefaultUidGenerator.class);
 
     /** Bits allocate */
-    protected int timeBits = 34;
-    protected int workerBits = 16;
+    protected int timeBits = 33;
+    protected int workerBits = 17;
     protected int seqBits = 13;
 
-    /** Customer epoch, unit as second. For example 2020-02-17 (ms: 1463673600000)*/
+    /** Customer epoch, unit as second. For example 2020-02-17 (ms: 1581868800000L)*/
     protected String epochStr = "2020-02-17";  //初始时间
     protected long epochSeconds = TimeUnit.MILLISECONDS.toSeconds(1581868800000L);
 
@@ -210,28 +210,4 @@ public class DefaultUidGenerator implements UidGenerator {
         LOGGER.info("Initialized bits(1, {}, {}, {}) for workerID:{}", timeBits, workerBits, seqBits, workerId);
     }
 
-    //保留 TODO
-    public void setEpochStr(String epochStr) {
-        if (StringUtils.isNotBlank(epochStr)) {
-            this.epochStr = epochStr;
-            String DAY_PATTERN = "yyyy-MM-dd";
-            try {
-                this.epochSeconds = TimeUnit.MILLISECONDS.toSeconds(ConvertUtils.strToDate(epochStr, DAY_PATTERN).getTime());
-            } catch (ParseException e) {
-                e.printStackTrace();
-            }
-        }
-    }
-
-    public static void main(String[] args) {
-        UidGenerator uidGenerator = DefaultUidGenerator.getUidGenerator();
-        for (int i = 0; i < 5; i++) {
-            System.out.println(uidGenerator.getUID());
-        }
-        System.out.println(111);
-        UidGenerator uidGenerator2 = DefaultUidGenerator.getUidGenerator();
-        for (int i = 0; i < 5; i++) {
-            System.out.println(uidGenerator2.getUID());
-        }
-    }
 }
