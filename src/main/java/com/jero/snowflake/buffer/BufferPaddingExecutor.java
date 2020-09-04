@@ -32,34 +32,44 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * Represents an executor for padding {@link RingBuffer}<br>
  * There are two kinds of executors: one for scheduled padding, the other for padding immediately.
- * 
+ *
  * @author yutianbao
  */
 public class BufferPaddingExecutor {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(BufferPaddingExecutor.class);
 
-    /** Constants */
+    /**
+     * Constants
+     */
     private static final String WORKER_NAME = "RingBuffer-Padding-Worker";
     private static final String SCHEDULE_NAME = "RingBuffer-Padding-Schedule";
-    
-    /** Whether buffer padding is running */
+
+    /**
+     * Whether buffer padding is running
+     */
     private final AtomicBoolean running;
 
-    /** We can borrow UIDs from the future, here store the last second we have consumed */
+    /**
+     * We can borrow UIDs from the future, here store the last second we have consumed
+     */
     private final PaddedAtomicLong lastSecond;
 
-    /** RingBuffer & BufferUidProvider */
+    /**
+     * RingBuffer & BufferUidProvider
+     */
     private final RingBuffer ringBuffer;
     private final BufferedUidProvider uidProvider;
 
-    /** Padding immediately by the thread pool */
+    /**
+     * Padding immediately by the thread pool
+     */
     private final ExecutorService bufferPadExecutors;
 
     /**
      * Constructor with {@link RingBuffer}, {@link BufferedUidProvider}, and whether use schedule padding
      *
-     * @param ringBuffer {@link RingBuffer}
+     * @param ringBuffer  {@link RingBuffer}
      * @param uidProvider {@link BufferedUidProvider}
      */
     public BufferPaddingExecutor(RingBuffer ringBuffer, BufferedUidProvider uidProvider) {
@@ -117,5 +127,5 @@ public class BufferPaddingExecutor {
         running.compareAndSet(true, false);
         LOGGER.info("End to padding buffer lastSecond:{}. {}", lastSecond.get(), ringBuffer);
     }
-    
+
 }

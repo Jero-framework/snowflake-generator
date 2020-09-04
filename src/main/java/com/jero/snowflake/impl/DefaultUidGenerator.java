@@ -37,14 +37,14 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * Represents an implementation of {@link UidGenerator}
- *
+ * <p>
  * The unique id has 64bits (long), default allocated as blow:<br>
  * <li>sign: The highest bit is 0
  * <li>delta seconds: The next 28 bits, represents delta seconds since a customer epoch(2016-05-20 00:00:00.000).
- *                    Supports about 8.7 years until to 2024-11-20 21:24:16
+ * Supports about 8.7 years until to 2024-11-20 21:24:16
  * <li>worker id: The next 22 bits, represents the worker's id which assigns based on database, max id is about 420W
  * <li>sequence: The next 13 bits, represents a sequence within the same second, max for 8192/s<br><br>
- *
+ * <p>
  * The {@link DefaultUidGenerator#parseUID(long)} is a tool method to parse the bits
  *
  * <pre>{@code
@@ -53,7 +53,7 @@ import java.util.concurrent.TimeUnit;
  * +------+----------------------+----------------+-----------+
  *   1bit          34bits              16bits         13bits
  * }</pre>
- *
+ * <p>
  * You can also specified the bits by Spring property setting.
  * <li>timeBits: default as 34
  * <li>workerBits: default as 16
@@ -67,29 +67,39 @@ import java.util.concurrent.TimeUnit;
 public class DefaultUidGenerator implements UidGenerator {
     private static final Logger LOGGER = LoggerFactory.getLogger(DefaultUidGenerator.class);
 
-    /** Bits allocate */
+    /**
+     * Bits allocate
+     */
     protected int timeBits = 33;
     protected int workerBits = 17;
     protected int seqBits = 13;
 
-    /** Customer epoch, unit as second. For example 2020-02-17 (ms: 1581868800000L)*/
+    /**
+     * Customer epoch, unit as second. For example 2020-02-17 (ms: 1581868800000L)
+     */
     protected String epochStr = "2020-02-17";  //初始时间
     protected long epochSeconds = TimeUnit.MILLISECONDS.toSeconds(1581868800000L);
 
-    /** 算法类，实现了算法 */
+    /**
+     * 算法类，实现了算法
+     */
     protected BitsAllocator bitsAllocator;
     protected Long workerId;
 
     private static final int DEFAULT_BOOST_POWER = 3;
 
-    /** Spring properties */
+    /**
+     * Spring properties
+     */
     private int boostPower = DEFAULT_BOOST_POWER;
     private int paddingFactor = RingBuffer.DEFAULT_PADDING_PERCENT;
 
     private RejectedPutBufferHandler rejectedPutBufferHandler;
     private RejectedTakeBufferHandler rejectedTakeBufferHandler;
 
-    /** RingBuffer */
+    /**
+     * RingBuffer
+     */
     private RingBuffer ringBuffer;
     private BufferPaddingExecutor bufferPaddingExecutor;
 
@@ -97,7 +107,7 @@ public class DefaultUidGenerator implements UidGenerator {
 
     private volatile static UidGenerator defaultUidGenerator;
 
-    private DefaultUidGenerator (){
+    private DefaultUidGenerator() {
         initAlgorithmAndWorkerId();
         initRingBuffer();
     }
@@ -116,6 +126,7 @@ public class DefaultUidGenerator implements UidGenerator {
     /**
      * 获取缓存中ID
      * 首次调用时，判断是否初始化，若未初始化，则进行算法的初始化操作
+     *
      * @return long 生成的Id
      * @throws UidGenerateException
      */
@@ -196,7 +207,7 @@ public class DefaultUidGenerator implements UidGenerator {
         LOGGER.info("Initialized ringBuffer {}", ringBuffer.toString());
     }
 
-    private void initAlgorithmAndWorkerId(){
+    private void initAlgorithmAndWorkerId() {
         // initialize bits allocator
         bitsAllocator = new BitsAllocator(timeBits, workerBits, seqBits);
 

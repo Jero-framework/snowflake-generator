@@ -20,7 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * Allocate 64 bits for the UID(long)<br>
  * sign (fixed 1bit) -> deltaSecond -> workerId -> sequence(within the same second)
- * 
+ *
  * @author yutianbao
  */
 public class BitsAllocator {
@@ -77,7 +77,7 @@ public class BitsAllocator {
     /**
      * Allocate bits for UID according to delta seconds & workerId & sequence<br>
      * <b>Note that: </b>The highest bit will always be 0 for sign
-     * 
+     *
      * @param deltaSeconds
      * @param workerId
      * @param sequence
@@ -86,7 +86,7 @@ public class BitsAllocator {
     public long allocate(long deltaSeconds, long workerId, long sequence) {
         return (deltaSeconds << timestampShift) | (workerId << workerIdShift) | sequence;
     }
-    
+
     /**
      * Getters
      */

@@ -22,9 +22,9 @@ import org.apache.commons.logging.LogFactory;
 import java.lang.management.ManagementFactory;
 
 /**
- * Represents an implementation of {@link WorkerIdAssigner}, 
+ * Represents an implementation of {@link WorkerIdAssigner},
  * the worker id will be discarded after assigned to the UidGenerator
- * 
+ *
  * @author yutianbao
  */
 public class DefaultWorkerIdAssigner implements WorkerIdAssigner {
@@ -33,15 +33,15 @@ public class DefaultWorkerIdAssigner implements WorkerIdAssigner {
 
     /**
      * 默认以pid构建当次的workerId
-     * 
+     *
      * @return assigned worker id
      */
     public long assignWorkerId() {
         // build worker id
-        String workerIdStr= getPid();
+        String workerIdStr = getPid();
         log.info("于" + System.currentTimeMillis() + "生成workerId:" + workerIdStr);
 
-        if (!StringUtils.isNumber(workerIdStr)){
+        if (!StringUtils.isNumber(workerIdStr)) {
             throw new IllegalArgumentException("获取Pid无效");
         }
 
@@ -51,9 +51,10 @@ public class DefaultWorkerIdAssigner implements WorkerIdAssigner {
 
     /**
      * 获取当前启动进程Pid
+     *
      * @return
      */
-    public String getPid(){
+    public String getPid() {
         String name = ManagementFactory.getRuntimeMXBean().getName();
         String pid = name.split("@")[0];
         return pid;

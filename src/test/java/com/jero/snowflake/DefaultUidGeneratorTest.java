@@ -17,7 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Test for {@link DefaultUidGenerator}
- * 
+ *
  * @author yutianbao
  */
 public class DefaultUidGeneratorTest {
@@ -44,7 +44,7 @@ public class DefaultUidGeneratorTest {
 
     /**
      * Test for parallel generate
-     * 
+     *
      * @throws InterruptedException
      */
     @Test
@@ -78,7 +78,7 @@ public class DefaultUidGeneratorTest {
      * Worker run
      */
     private void workerRun(Set<Long> uidSet, AtomicInteger control) {
-        for (;;) {
+        for (; ; ) {
             int myPosition = control.updateAndGet(old -> (old == SIZE ? SIZE : old + 1));
             if (myPosition == SIZE) {
                 return;
