@@ -15,9 +15,10 @@
  */
 package com.jero.snowflake.worker;
 
-import com.jero.common.utils.StringUtils;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import cn.hutool.core.util.NumberUtil;
+import com.jero.snowflake.impl.DefaultUidGenerator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.lang.management.ManagementFactory;
 
@@ -29,7 +30,7 @@ import java.lang.management.ManagementFactory;
  */
 public class DefaultWorkerIdAssigner implements WorkerIdAssigner {
 
-    private final Log log = LogFactory.getLog(DefaultWorkerIdAssigner.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(DefaultWorkerIdAssigner.class);
 
     /**
      * 默认以pid构建当次的workerId
@@ -39,9 +40,9 @@ public class DefaultWorkerIdAssigner implements WorkerIdAssigner {
     public long assignWorkerId() {
         // build worker id
         String workerIdStr = getPid();
-        log.info("于" + System.currentTimeMillis() + "生成workerId:" + workerIdStr);
+        LOGGER.info("于" + System.currentTimeMillis() + "生成workerId:" + workerIdStr);
 
-        if (!StringUtils.isNumber(workerIdStr)) {
+        if (!NumberUtil.isNumber(workerIdStr)) {
             throw new IllegalArgumentException("获取Pid无效");
         }
 

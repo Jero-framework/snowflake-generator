@@ -1,10 +1,9 @@
 package com.jero.snowflake;
 
-import com.jero.common.utils.StringUtils;
+import cn.hutool.core.util.StrUtil;
 import com.jero.snowflake.impl.DefaultUidGenerator;
 import org.junit.jupiter.api.Test;
 
-import javax.annotation.Resource;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -21,7 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * @author yutianbao
  */
 public class DefaultUidGeneratorTest {
-    private static final int SIZE = 7000000; // 700w
+    private static final int SIZE = 7000; // 700w
     private static final boolean VERBOSE = true;
     private static final int THREADS = Runtime.getRuntime().availableProcessors() << 1;
 
@@ -98,7 +97,7 @@ public class DefaultUidGeneratorTest {
 
         // Check UID is positive, and can be parsed
         assertTrue(uid > 0L);
-        assertTrue(StringUtils.isNotBlank(parsedInfo));
+        assertTrue(StrUtil.isNotBlank(parsedInfo));
 
         if (VERBOSE) {
             System.out.println(Thread.currentThread().getName() + " No." + index + " >>> " + parsedInfo);

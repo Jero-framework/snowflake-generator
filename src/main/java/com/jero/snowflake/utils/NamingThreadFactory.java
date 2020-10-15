@@ -15,7 +15,7 @@
  */
 package com.jero.snowflake.utils;
 
-import com.jero.common.utils.StringUtils;
+import cn.hutool.core.util.StrUtil;
 import org.apache.commons.lang3.ClassUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -82,7 +82,7 @@ public class NamingThreadFactory implements ThreadFactory {
         // If there is no specified name for thread, it will auto detect using the invoker classname instead.
         // Notice that auto detect may cause some performance overhead
         String prefix = this.name;
-        if (StringUtils.isBlank(prefix)) {
+        if (StrUtil.isBlank(prefix)) {
             prefix = getInvoker(2);
         }
         thread.setName(prefix + "-" + getSequence(prefix));

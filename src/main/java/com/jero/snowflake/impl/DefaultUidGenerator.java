@@ -15,8 +15,6 @@
  */
 package com.jero.snowflake.impl;
 
-import com.jero.common.utils.ConvertUtils;
-import com.jero.common.utils.StringUtils;
 import com.jero.snowflake.BitsAllocator;
 import com.jero.snowflake.UidGenerator;
 import com.jero.snowflake.buffer.BufferPaddingExecutor;
@@ -30,6 +28,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -154,7 +153,9 @@ public class DefaultUidGenerator implements UidGenerator {
         long deltaSeconds = uid >>> (workerIdBits + sequenceBits);
 
         Date thatTime = new Date(TimeUnit.SECONDS.toMillis(epochSeconds + deltaSeconds));
-        String thatTimeStr = ConvertUtils.formatStrFromTime(thatTime);
+
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        String thatTimeStr = sdf.format(thatTime);
 
         // format as string
         return String.format("{\"UID\":\"%d\",\"timestamp\":\"%s\",\"workerId\":\"%d\",\"sequence\":\"%d\"}",
