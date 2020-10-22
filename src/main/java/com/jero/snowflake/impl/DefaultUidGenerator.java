@@ -214,7 +214,7 @@ public class DefaultUidGenerator implements UidGenerator {
 
         // initialize worker id
         workerIdAssigner = new DefaultWorkerIdAssigner();
-        workerId = workerIdAssigner.assignWorkerId();
+        workerId = workerIdAssigner.assignWorkerId(bitsAllocator.getMaxWorkerId());
         if (workerId > bitsAllocator.getMaxWorkerId()) {
             throw new RuntimeException("Worker id " + workerId + " exceeds the max " + bitsAllocator.getMaxWorkerId());
         }

@@ -29,6 +29,6 @@ public interface WorkerIdAssigner {
      *
      * @return assigned worker id
      */
-    long assignWorkerId();
+    long assignWorkerId(long maxWorkerId);
 
 }

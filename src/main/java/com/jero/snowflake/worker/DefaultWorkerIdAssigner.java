@@ -37,7 +37,7 @@ public class DefaultWorkerIdAssigner implements WorkerIdAssigner {
      *
      * @return assigned worker id
      */
-    public long assignWorkerId() {
+    public long assignWorkerId(long maxWorkerId) {
         // build worker id
         String workerIdStr = getPid();
         LOGGER.info("于" + System.currentTimeMillis() + "生成workerId:" + workerIdStr);
@@ -46,8 +46,14 @@ public class DefaultWorkerIdAssigner implements WorkerIdAssigner {
             throw new IllegalArgumentException("获取Pid无效");
         }
 
-        int workerId = Integer.valueOf(workerIdStr);
-        return workerId;
+        //处理pid > 65535的情况
+        long workerId = Long.valueOf(workerIdStr);
+        long workerIdResult = workerId;
+        if (workerIdResult > maxWorkerId){
+            workerIdResult = workerIdResult % maxWorkerId;
+        }
+
+        return workerIdResult;
     }
 
     /**
